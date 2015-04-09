@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
+import numpy as np
 from collections import namedtuple
 Item = namedtuple("Item", ['index', 'value', 'weight'])
 
@@ -34,6 +34,51 @@ def weightedGreedy(items, capacity):
 			weight += item.weight
 	return value, taken
 
+
+def dynamic(items, capacity):
+	#Compute dynamic solution using bottom up, divide and conquer
+	#compute optimal solution recursively using
+	taken = [0]*len(items)
+	def O(i, c, items):
+		if i<0:
+			return 0
+		if items[i].weight<=c:
+			without = O(i-1,c,items)
+			added = O(i-1, c-items[i].weight,items)+items[i].value
+			if added >= without:
+				taken[items[i].index] = 1
+				return added
+			else:
+				taken[items[i].index] = 0
+				return without
+		else:
+			taken[items[i].index] = 0
+			return O(i-1,c,items)
+
+	return O(len(items)-1, capacity, items), taken
+	
+def dynam(items, capacity):
+	taken = [0]*len(items)
+	m = np.zeros((len(items), capacity+1))
+	for i  in range(len(items)):
+		for j in range(items[i].weight+1):
+			if items[i].weight <= j:
+				m[i,j] = max(m[i-1,j], m[i-1,j]-items[i].weight+items[i].value)
+				if m[i,j] != m[i-1,j]:
+					taken[i]=1
+			else:
+				#m[i,j] = m[i-1,j]
+				taken[i]=0
+	#print np.shape(m)
+	return m[len(items)-1,capacity], taken
+
+'''
+A* or DFS https://class.coursera.org/optimization-003/forum/thread?thread_id=53
+https://people.mpi-inf.mpg.de/~mehlhorn/ftp/Toolbox/GenericMethods.pdf
+After sorting the items by decreasing density, place empty knapsack in priority queue. Remove top knapsack from queue, and add both that knapsack without the next item and with the next item, update pointer to the next item.
+The evaluation function is the current value plus the heuristic estimate. Here we can use the optimistic estimate from knapsack lecture 5 on branch and bound -- the linear relaxation optimistic estimate.
+'''
+
 def solve_it(input_data):
     # Modify this code to run your optimization algorithm
 
@@ -50,11 +95,13 @@ def solve_it(input_data):
         parts = line.split()
         items.append(Item(i-1, int(parts[0]), int(parts[1])))
     
-	#value1, taken = trivialGreedy(items, capacity)
-	value, taken = weightedGreedy(items, capacity)
-	#print value#-value1
+	
+	#value, taken = weightedGreedy(items, capacity)
+	value, taken = dynamic(items, capacity)
+	#print value#value1
     
     # prepare the solution in the specified output format
+
     output_data = str(value) + ' ' + str(0) + '\n'
     output_data += ' '.join(map(str, taken))
     return output_data
