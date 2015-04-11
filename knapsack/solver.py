@@ -35,10 +35,9 @@ def weightedGreedy(items, capacity):
 	return value, taken
 
 
-def dynamic(items, capacity):
-	#Compute dynamic solution using bottom up, divide and conquer
-	#compute optimal solution recursively using
-	taken = [0]*len(items)
+def recursive(items, capacity):
+	#dynamic without memoization. Computing taken impossible because of repeated calls.
+	taken = [1]*len(items)
 	def O(i, c, items):
 		if i<0:
 			return 0
@@ -52,25 +51,35 @@ def dynamic(items, capacity):
 				taken[items[i].index] = 0
 				return without
 		else:
-			taken[items[i].index] = 0
+			#taken[items[i].index] = 0
 			return O(i-1,c,items)
 
 	return O(len(items)-1, capacity, items), taken
 	
-def dynam(items, capacity):
+def dynamic(items, capacity):
 	taken = [0]*len(items)
-	m = np.zeros((len(items), capacity+1))
-	for i  in range(len(items)):
-		for j in range(items[i].weight+1):
-			if items[i].weight <= j:
-				m[i,j] = max(m[i-1,j], m[i-1,j]-items[i].weight+items[i].value)
-				if m[i,j] != m[i-1,j]:
-					taken[i]=1
+	o = np.zeros((len(items)+1,capacity+1), dtype=np.int32)
+	
+	#i item index and c capacity index
+	for k in range(1, len(o[:,0])):
+		for c in range(1, len(o[0,:])):
+			i = k-1
+			if items[i].weight <= c:
+				o[k,c]= max(o[k-1,c],o[k-1, c-items[i].weight]+items[i].value)
 			else:
-				#m[i,j] = m[i-1,j]
-				taken[i]=0
-	#print np.shape(m)
-	return m[len(items)-1,capacity], taken
+				o[k,c] = o[k-1,c]
+	
+	#Taken
+	i = len(items)
+	c=capacity
+	while(i>0):
+		if o[i, c] == o[i-1, c]:
+			i -= 1
+		elif o[i, c] > o[i-1, c]:
+			taken[items[i-1].index] = 1
+			c -= items[i-1].weight
+			
+	return o[len(items), capacity], taken
 
 '''
 A* or DFS https://class.coursera.org/optimization-003/forum/thread?thread_id=53
@@ -94,10 +103,10 @@ def solve_it(input_data):
         line = lines[i]
         parts = line.split()
         items.append(Item(i-1, int(parts[0]), int(parts[1])))
-    
-	
+
+
 	#value, taken = weightedGreedy(items, capacity)
-	value, taken = dynamic(items, capacity)
+    value, taken = dynamic(items, capacity)
 	#print value#value1
     
     # prepare the solution in the specified output format
