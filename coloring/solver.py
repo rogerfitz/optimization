@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+def basicGreedy(edges, node_count):
+    # build a trivial solution
+    # every node has its own color
+    return range(0, node_count)
 
 def solve_it(input_data):
     # Modify this code to run your optimization algorithm
@@ -18,9 +22,7 @@ def solve_it(input_data):
         parts = line.split()
         edges.append((int(parts[0]), int(parts[1])))
 
-    # build a trivial solution
-    # every node has its own color
-    solution = range(0, node_count)
+	solution = basicGreedy(edges, node_count)
 
     # prepare the solution in the specified output format
     output_data = str(node_count) + ' ' + str(0) + '\n'
