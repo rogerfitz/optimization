@@ -3,12 +3,22 @@
 from collections import defaultdict
 import numpy as np
 from sortedcontainers import SortedSet
+import itertools
 
 def nodeInvertedIndex(edges):
-	idx = defaultdict(SortedSet)#can change to numpy array
+	#node: [edges]
+	idx = defaultdict(SortedSet)#can change to numpy array following double growth resizing
 	for i in range(len(edges)):
 		idx[edges[i][0]].add(edges[i][1])
 	return idx
+
+def colorIndex(colors):
+	#color: [node_ids]
+	cdx = defaultdict(SortedSet)
+	for i in range(len(colors)):
+		cdx[colors[i]].add(i)
+	#cdx = [cdx[key] for key in sorted(cdx, key=lambda key: -len(cdx[key]))]#sort biggest to smallest NO EFFECT Try kempe swap
+	return cdx
 
 def basicGreedy(edges, node_count):
     # build a trivial solution
@@ -18,26 +28,81 @@ def basicGreedy(edges, node_count):
 def improvedGreedy(edges, node_count):
 	# returns onePass greedy colors algorithm
 	
-	ndx = nodeInvertedIndex(edges)#actually node edge index
+	edx = nodeInvertedIndex(edges)#actually node edge index
 	colors = np.arange((node_count), dtype='uint16')
-	return onePass(ndx, colors)
+	return onePass(edx, colors)
 
-def onePass(ndx, colors):
+def swapConnColors(c1, c2, edx):
+	#kempe chain connected
+	new1 = SortedSet()
+	new2 = SortedSet()
+
+	for i in c1:
+		swapped = False
+		for j in edx[i]:
+			if j in c2:
+				new1.add(j)
+				new2.add(i)
+				swapped = True
+		if not swapped:
+			new1.add(i)
+			new2.add(j)		
+	#print c1, c2
+	#print new1, new2
+	return new1,new2		
+	
+def cArray(cdx, colors):
+	for c in range(len(cdx)):
+		for edge in cdx[c]:
+			colors[edge] = c
+	return colors
+def kempeDescent(edges, node_count):
+	edx = nodeInvertedIndex(edges)#actually node edge index
+	colors = onePass(edx, np.arange((node_count), dtype='uint16'))
+	cdx = colorIndex(colors)
+	
+	print max(colors)+1
+	#Gradient descent by kempe swap
+
+	
+	#Can select the swaps better
+	best = np.copy(colors)#numpy uses pointers
+	print max(best)+1
+	for i,j in list(itertools.combinations(cdx.iterkeys(), 2)):
+		print max(best)+1
+		old_i = cdx[i]
+		old_j = cdx[j]
+
+		c0, c1 = swapConnColors(cdx[i],cdx[j], edx)
+		cdx[i] = c0
+		cdx[j] = c1
+
+		colors = onePass(edx, cArray(cdx, colors))
+		
+		if max(colors) < max(best):			
+			best = np.copy(colors)
+		#can chain swaps
+		elif max(colors) > max(best):
+			#revert swap since worse
+			cdx[i] = old_i
+			cdx[j] = old_j
+
+	return best
+
+#TODO try k-opt untwisting
+
+def onePass(edx, colors):
 	# Outputs feasible space algorithm.
 	# 1 pass check neighbors and assign lowest color
 	for i in range(len(colors)):
 		colors[i]=0
 		j=0
-		while j < len(ndx[i]):
-			if colors[i] == colors[ndx[i][j]]:
+		while j < len(edx[i]):
+			if colors[i] == colors[edx[i][j]]:
 				colors[i] += 1
 				j=-1
 			j+=1
 	return colors
-
-def localKempe(edges, node_count):
-
-	pass
 
 def solve_it(input_data):
     # Modify this code to run your optimization algorithm
@@ -56,8 +121,9 @@ def solve_it(input_data):
         edges.append((int(parts[0]), int(parts[1])))
         edges.append((int(parts[1]), int(parts[0])))
 	
-    solution = improvedGreedy(edges, node_count)
+    #solution = improvedGreedy(edges, node_count)
 	#solution = basicGreedy(edges, node_count)
+    solution = kempeDescent(edges, node_count)
 
     # prepare the solution in the specified output format
     output_data = str(max(solution)+1) + ' ' + str(0) + '\n'
