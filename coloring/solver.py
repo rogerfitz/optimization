@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 from collections import defaultdict
 import numpy as np
-from sortedcontainers import SortedSet
+from sortedcontainers import SortedSet, SortedDict
 import itertools
+import random
 
 def nodeInvertedIndex(edges):
 	#node: [edges]
@@ -28,18 +29,41 @@ def basicGreedy(edges, node_count):
 def improvedGreedy(edges, node_count):
 	# returns onePass greedy colors algorithm
 	
-	edx = nodeInvertedIndex(edges)#actually node edge index
+	ndx = nodeInvertedIndex(edges)#actually node edge index
 	colors = np.arange((node_count), dtype='uint16')
-	return onePass(edx, colors)
+	return onePass(ndx, colors)
 
-def swapConnColors(c1, c2, edx):
+def greedyByDegree(edges, node_count):
+	# returns onePass greedy colors algorithm on nodes sorted by degree
+	ndx = nodeInvertedIndex(edges)
+	colors = np.arange((node_count), dtype='uint16')
+	return onePass(ndx, colors)
+	'''
+	ndx = nodeInvertedIndex(edges)#actually node edge index
+	print ndx
+	ndx = defaultdict(SortedSet)[{key: ndx[key]} for key in sorted(ndx, key=lambda key: -len(ndx[key]))]#sort biggest to smallest 
+	print ndx
+	colors = np.arange((node_count), dtype='uint16')
+	return onePass(ndx, colors)'''
+
+def greedyMultiPass(edges, node_count):
+	ndx = nodeInvertedIndex(edges)
+	colors = np.arange((node_count), dtype='uint16')
+	return multiPass(ndx, colors)
+
+def colorMultiPass(edges, node_count):
+	ndx = nodeInvertedIndex(edges)
+	colors = np.arange((node_count), dtype='uint16')
+	return reduceColors(ndx, colors)
+
+def swapConnColors(c1, c2, ndx):
 	#kempe chain connected
 	new1 = SortedSet()
 	new2 = SortedSet()
 
 	for i in c1:
 		swapped = False
-		for j in edx[i]:
+		for j in ndx[i]:
 			if j in c2:
 				new1.add(j)
 				new2.add(i)
@@ -56,9 +80,11 @@ def cArray(cdx, colors):
 		for edge in cdx[c]:
 			colors[edge] = c
 	return colors
+
 def kempeDescent(edges, node_count):
-	edx = nodeInvertedIndex(edges)#actually node edge index
-	colors = onePass(edx, np.arange((node_count), dtype='uint16'))
+	#kempe chain neighborhood descent
+	ndx = nodeInvertedIndex(edges)#actually node edge index
+	colors = onePass(ndx, np.arange((node_count), dtype='uint16'))
 	cdx = colorIndex(colors)
 	
 	print max(colors)+1
@@ -73,11 +99,11 @@ def kempeDescent(edges, node_count):
 		old_i = cdx[i]
 		old_j = cdx[j]
 
-		c0, c1 = swapConnColors(cdx[i],cdx[j], edx)
+		c0, c1 = swapConnColors(cdx[i],cdx[j], ndx)
 		cdx[i] = c0
 		cdx[j] = c1
 
-		colors = onePass(edx, cArray(cdx, colors))
+		colors = onePass(ndx, cArray(cdx, colors))
 		
 		if max(colors) < max(best):			
 			best = np.copy(colors)
@@ -91,18 +117,72 @@ def kempeDescent(edges, node_count):
 
 #TODO try k-opt untwisting
 
-def onePass(edx, colors):
+def onePass(ndx, colors):
 	# Outputs feasible space algorithm.
 	# 1 pass check neighbors and assign lowest color
-	for i in range(len(colors)):
+
+	#keys = [key for key in sorted(ndx, key=lambda key: -len(ndx[key]))]#sort biggest to smallest 
+	for i in sorted(ndx, key=lambda key: -len(ndx[key])):
 		colors[i]=0
 		j=0
-		while j < len(edx[i]):
-			if colors[i] == colors[edx[i][j]]:
+		while j < len(ndx[i]):
+			if colors[i] == colors[ndx[i][j]]:
 				colors[i] += 1
 				j=-1
 			j+=1
 	return colors
+
+def reduceColors(ndx, colors):
+	best = np.copy(onePass(ndx, colors))#runs degree greedy
+	print max(best)+1
+
+	stop = 0
+	while stop < 10:
+		cdx = colorIndex(best)
+		#print cdx
+	
+		keys = [key for key in sorted(ndx, key=lambda key: len(ndx[key]))][:10]
+		for i in keys:
+			colors[i]=0
+			j=0
+			while j < len(ndx[i]):
+				if colors[i] == colors[ndx[i][j]]:
+					colors[i] += 1
+					j=-1
+				j+=1
+		print max(colors)+1
+		if max(colors) < max(best):
+			best = np.copy(colors)
+		stop+=1
+	return best	
+
+def multiPass(ndx, colors):
+	best = np.copy(onePass(ndx, colors))#runs degree greedy
+	print max(best)+1
+
+	#while. Update best if better
+	stop = 0
+	while stop < 100:
+		cdx = colorIndex(best)
+		#print cdx
+	
+		keys = cdx.keys()
+		random.shuffle(keys)
+		#print keys
+		for k in keys:
+			for i in cdx[k]:
+				colors[i]=0
+				j=0
+				while j < len(ndx[i]):
+					if colors[i] == colors[ndx[i][j]]:
+						colors[i] += 1
+						j=-1
+					j+=1
+		if max(colors) < max(best):
+			best = np.copy(colors)
+		stop+=1
+	return best	
+		
 
 def solve_it(input_data):
     # Modify this code to run your optimization algorithm
@@ -123,7 +203,10 @@ def solve_it(input_data):
 	
     #solution = improvedGreedy(edges, node_count)
 	#solution = basicGreedy(edges, node_count)
-    solution = kempeDescent(edges, node_count)
+    #solution = greedyByDegree(edges, node_count)
+    #solution = greedyMultiPass(edges, node_count)
+    solution = colorMultiPass(edges, node_count)
+    #solution = kempeDescent(edges, node_count)
 
     # prepare the solution in the specified output format
     output_data = str(max(solution)+1) + ' ' + str(0) + '\n'
