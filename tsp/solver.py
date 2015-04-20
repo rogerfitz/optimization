@@ -4,10 +4,33 @@
 import math
 from collections import namedtuple
 
-Point = namedtuple("Point", ['x', 'y'])
+Point = namedtuple("Point", ['i', 'x', 'y'])#index, x, y
 
 def length(point1, point2):
     return math.sqrt((point1.x - point2.x)**2 + (point1.y - point2.y)**2)
+
+def spiral(points, nodeCount):
+	visited = range(0, nodeCount)
+	#return visited
+	origin = Point(-1, 0,0)
+	#SORT BY DISTANCE TO ORIGIN
+	points = [p for p in sorted(points, key=lambda p: -length(origin, p))]
+	
+	#Start at farthest
+	i = 0
+	p1 = points[-1]
+	visited[p1.i] = i
+	while points:
+		points.remove(p1)
+		i+=1
+		#rank
+		nearest = [p2 for p2 in sorted(points, key=lambda p2: length(p1, p2))]
+		if not nearest:
+			break
+		p1 = nearest[0]
+		visited[p1.i] = i			
+		
+	return visited
 
 def solve_it(input_data):
     # Modify this code to run your optimization algorithm
@@ -21,11 +44,11 @@ def solve_it(input_data):
     for i in range(1, nodeCount+1):
         line = lines[i]
         parts = line.split()
-        points.append(Point(float(parts[0]), float(parts[1])))
+        points.append(Point(int(i-1), float(parts[0]), float(parts[1])))
 
     # build a trivial solution
     # visit the nodes in the order they appear in the file
-    solution = range(0, nodeCount)
+    solution = spiral(points, nodeCount)
 
     # calculate the length of the tour
     obj = length(points[solution[-1]], points[solution[0]])
