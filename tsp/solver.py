@@ -4,7 +4,6 @@
 import math
 from collections import namedtuple
 import itertools
-from random import shuffle
 import random
 
 Point = namedtuple("Point", ['i', 'x', 'y'])#index, x, y
@@ -47,7 +46,7 @@ def optimal(points, nodeCount, tour):
 			bestTour = tour[:]
 			best = tourDistance
 			#print best
-		shuffle(tour)
+		random.shuffle(tour)
 	return bestTour[:]
 
 def spiral(points, nodeCount):
@@ -74,12 +73,15 @@ def spiral(points, nodeCount):
 	return tour
 
 def genSolution(points, nodeCount):
+	print nodeCount
 	tour = range(0, nodeCount)
 	tour = optimal(points, nodeCount, tour)
 	tour = twoOpt(points, nodeCount, tour)
 
 	bestTour = tour[:]
 	best = totalDistance(tour, points, nodeCount, False)
+
+
 
 	for i in range(600):
 		#2-opt descent. Change to sim annealing
@@ -101,23 +103,7 @@ def genSolution(points, nodeCount):
 				i-=1
 				continue
 			tabu.append(nodes)
-			temp = kOpt(points, nodeCount, bestTour[:], nodes)
-			tempDist = totalDistance(temp, points, nodeCount, False)
-			if tempDist<best:
-				bestTour = temp[:]
-				best = tempDist
-				print best
-				#print bestTour
-	tabu = []
-	for k in range(3,1,-1):
-		print k
-		for i in range(10000):
-			nodes = sorted(random.sample(range(0,nodeCount),k))
-			if nodes in tabu:
-				i-=1
-				continue
-			tabu.append(nodes)
-			temp = kOpt(points, nodeCount, bestTour[:], nodes)
+			temp = nOpt(points, nodeCount, bestTour[:], nodes)
 			tempDist = totalDistance(temp, points, nodeCount, False)
 			if tempDist<best:
 				bestTour = temp[:]
@@ -125,14 +111,35 @@ def genSolution(points, nodeCount):
 				print best
 				#print bestTour
 
+	for i in range(1000):
+		temp = kOpt(points, nodeCount, bestTour[:], 6)
+		tempDist = totalDistance(temp, points, nodeCount, False)
+		if tempDist<best:
+			bestTour = temp[:]
+			best = tempDist
+			print best, i
 	return bestTour
 
 def shuffleLoop(points, nodeCount):
 	tour = range(nodeCount)
 	
+def kOpt(points, nodeCount, tour, maxK):
+	nodes = range(nodeCount)
+	random.shuffle(nodes)
 
-def kOpt(points, nodeCount, tour, nodes):
-	#Nodes to swap. K kwap
+	bestTour = nOpt(points, nodeCount, tour[:], nodes[0:2])
+	bestDist = totalDistance(bestTour, points, nodeCount, False)
+
+	for k in range(maxK+1):
+		tour = nOpt(points, nodeCount, bestTour[:], nodes[0:k])
+		d = totalDistance(tour, points, nodeCount, False)
+		if d < bestDist:
+			bestTour = tour[:]
+			bestDist = d
+	return bestTour
+
+def nOpt(points, nodeCount, tour, nodes):
+	#Finds optimal swapping of n items
 	#print 'nodes', nodes
 	bestTour = tour[:]
 	bestDist = totalDistance(bestTour, points, nodeCount, False)
